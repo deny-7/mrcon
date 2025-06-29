@@ -56,6 +56,11 @@ Examples:
 }
 
 func runRootCmd(cmd *cobra.Command, args []string) error {
+	if showVer {
+		fmt.Fprintf(cmd.OutOrStdout(), "mrcon version: %s\ncommit: %s\nbuild date: %s\n", version, commitSHA, buildDate)
+		return nil
+	}
+
 	// Environment variable fallback
 	if host == "" {
 		host = os.Getenv("MRCON_HOST")
