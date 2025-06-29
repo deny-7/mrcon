@@ -6,25 +6,13 @@ on:
       - main
 
 jobs:
-  get_app_token:
-    runs-on: ubuntu-latest
-    outputs:
-      token: ${{ steps.app-token.outputs.token }}
-    steps:
-      - name: Install GitHub App Token
-        uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIV_KEY }}
   create_tag:
-    needs: get_app_token
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ needs.get_app_token.outputs.token }}
+          token:  ${{ secrets.ACCESS_TOKEN }}
           fetch-depth: 0
       - name: Run tests
         run: |
@@ -34,7 +22,7 @@ jobs:
         id: semver
         uses: ietf-tools/semver-action@v1
         with:
-          token: ${{ needs.get_app_token.outputs.token }}
+          token: ${{ secrets.ACCESS_TOKEN }}
           noNewCommitBehavior: warn
           noVersionBumpBehavior: warn
       - name: Create Release
@@ -42,4 +30,4 @@ jobs:
         with:
           allowUpdates: true
           name: ${{ steps.semver.outputs.next }}
-          token: ${{ needs.get_app_token.outputs.token }}
+          token: ${{ secrets.ACCESS_TOKEN }}
