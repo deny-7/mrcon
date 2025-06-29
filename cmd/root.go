@@ -30,7 +30,17 @@ func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "mrcon",
 		Short: "Minecraft RCON client",
-		Long:  `mrcon is a simple Minecraft RCON client written in Go.`,
+		Long: `mrcon is a simple Minecraft RCON client written in Go.
+
+Flag/env resolution order:
+  1. CLI flags (e.g. --host, --port, --password)
+  2. Environment variables: MRCON_HOST, MRCON_PORT, MRCON_PASSWORD
+  3. If neither is set, the program will error.
+
+Examples:
+  mrcon --host 127.0.0.1 --port 25575 --password secret 'say hello'
+  MRCON_HOST=127.0.0.1 MRCON_PORT=25575 MRCON_PASSWORD=secret mrcon 'say hello'
+`,
 	}
 	cmd.Flags().StringVarP(&host, "host", "H", "", "RCON server host (required)")
 	cmd.Flags().IntVarP(&port, "port", "p", 0, "RCON server port (required)")
@@ -46,13 +56,21 @@ func newRootCmd() *cobra.Command {
 }
 
 func runRootCmd(cmd *cobra.Command, args []string) error {
-	if showVer {
-		fmt.Fprintf(cmd.OutOrStdout(), "mrcon version: %s\ncommit: %s\nbuild date: %s\n", version, commitSHA, buildDate)
-		return nil
+	// Environment variable fallback
+	if host == "" {
+		host = os.Getenv("MRCON_HOST")
+	}
+	if port == 0 {
+		if envPort := os.Getenv("MRCON_PORT"); envPort != "" {
+			fmt.Sscanf(envPort, "%d", &port)
+		}
+	}
+	if password == "" {
+		password = os.Getenv("MRCON_PASSWORD")
 	}
 
 	if host == "" || port == 0 || password == "" || (!termMode && len(args) == 0) {
-		fmt.Fprintln(cmd.ErrOrStderr(), "Error: --host, --port, --password, and a command are required.")
+		fmt.Fprintln(cmd.ErrOrStderr(), "Error: --host, --port, --password, and a command are required. You can also set MRCON_HOST, MRCON_PORT, MRCON_PASSWORD.")
 		cmd.Help()
 		return fmt.Errorf("missing required flags")
 	}
