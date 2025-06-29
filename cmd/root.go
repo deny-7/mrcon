@@ -26,99 +26,100 @@ var (
 	buildDate = "unknown"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "mrcon",
-	Short: "Minecraft RCON client",
-	Long:  `mrcon is a simple Minecraft RCON client written in Go.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		if showVer {
-			fmt.Printf("mrcon version: %s\ncommit: %s\nbuild date: %s\n", version, commitSHA, buildDate)
-			return
-		}
+func newRootCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "mrcon",
+		Short: "Minecraft RCON client",
+		Long:  `mrcon is a simple Minecraft RCON client written in Go.`,
+	}
+	cmd.Flags().StringVar(&host, "host", "H", "RCON server host (required)")
+	cmd.Flags().IntVarP(&port, "port", "p", 0, "RCON server port (required)")
+	cmd.Flags().StringVar(&password, "P", "", "RCON password (required)")
+	cmd.Flags().BoolVar(&showVer, "version", false, "Show version information")
+	cmd.Flags().BoolVar(&raw, "raw", false, "Output raw response without formatting")
+	cmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
+	cmd.Flags().BoolVar(&silent, "silent", false, "Suppress command output")
+	cmd.Flags().IntVar(&wait, "wait", 0, "Wait time in seconds between commands")
+	cmd.Flags().BoolVar(&termMode, "terminal", false, "Enable terminal mode for interactive commands")
+	cmd.RunE = runRootCmd
+	return cmd
+}
 
-		if host == "" || port == 0 || password == "" || (!termMode && len(args) == 0) {
-			fmt.Fprintln(os.Stderr, "Error: --host, --port, --password, and a command are required.")
-			cmd.Help()
-			os.Exit(1)
-		}
+func runRootCmd(cmd *cobra.Command, args []string) error {
+	if showVer {
+		fmt.Fprintf(cmd.OutOrStdout(), "mrcon version: %s\ncommit: %s\nbuild date: %s\n", version, commitSHA, buildDate)
+		return nil
+	}
 
-		address := fmt.Sprintf("%s:%d", host, port)
-		conn, err := rcon.Dial(address, password)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
-			os.Exit(1)
-		}
-		defer conn.Close()
+	if host == "" || port == 0 || password == "" || (!termMode && len(args) == 0) {
+		fmt.Fprintln(cmd.ErrOrStderr(), "Error: --host, --port, --password, and a command are required.")
+		cmd.Help()
+		return fmt.Errorf("missing required flags")
+	}
 
-		if termMode {
-			fmt.Println("Entering terminal mode. Type commands, Ctrl+C to exit.")
-			scanner := bufio.NewScanner(os.Stdin)
-			for {
-				fmt.Print("> ")
-				if !scanner.Scan() {
-					break
-				}
-				cmdText := scanner.Text()
-				if cmdText == "" {
-					continue
-				}
-				resp, err := conn.Execute(cmdText)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-					continue
-				}
-				if !silent {
-					if raw {
-						fmt.Print(resp)
-					} else if noColor {
-						fmt.Println(resp)
-					} else {
-						fmt.Println(resp) // Color output can be added here if needed
-					}
-				}
+	address := fmt.Sprintf("%s:%d", host, port)
+	conn, err := rcon.Dial(address, password)
+	if err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Failed to connect: %v\n", err)
+		return err
+	}
+	defer conn.Close()
+
+	if termMode {
+		fmt.Fprintln(cmd.OutOrStdout(), "Entering terminal mode. Type commands, Ctrl+C to exit.")
+		scanner := bufio.NewScanner(os.Stdin)
+		for {
+			fmt.Print("> ")
+			if !scanner.Scan() {
+				break
 			}
-			return
-		}
-
-		for _, cmdText := range args {
+			cmdText := scanner.Text()
+			if cmdText == "" {
+				continue
+			}
 			resp, err := conn.Execute(cmdText)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				continue
 			}
 			if !silent {
 				if raw {
-					fmt.Print(resp)
+					fmt.Fprint(cmd.OutOrStdout(), resp)
 				} else if noColor {
-					fmt.Println(resp)
+					fmt.Fprintln(cmd.OutOrStdout(), resp)
 				} else {
-					fmt.Println(resp) // Color output can be added here if needed
+					fmt.Fprintln(cmd.OutOrStdout(), resp) // Color output can be added here if needed
 				}
 			}
-			if wait > 0 {
-				time.Sleep(time.Duration(wait) * time.Second)
+		}
+		return nil
+	}
+
+	for _, cmdText := range args {
+		resp, err := conn.Execute(cmdText)
+		if err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+			continue
+		}
+		if !silent {
+			if raw {
+				fmt.Fprint(cmd.OutOrStdout(), resp)
+			} else if noColor {
+				fmt.Fprintln(cmd.OutOrStdout(), resp)
+			} else {
+				fmt.Fprintln(cmd.OutOrStdout(), resp) // Color output can be added here if needed
 			}
 		}
-	},
+		if wait > 0 {
+			time.Sleep(time.Duration(wait) * time.Second)
+		}
+	}
+	return nil
 }
 
-func init() {
-	rootCmd.Flags().StringVar(&host, "host", "H", "RCON server host (required)")
-	rootCmd.Flags().IntVarP(&port, "port", "p", 0, "RCON server port (required)")
-	rootCmd.Flags().StringVar(&password, "P", "", "RCON password (required)")
-	rootCmd.Flags().BoolVar(&showVer, "version", false, "Show version information")
-	rootCmd.Flags().BoolVar(&raw, "raw", false, "Output raw response without formatting")
-	rootCmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
-	rootCmd.Flags().BoolVar(&silent, "silent", false, "Suppress command output")
-	rootCmd.Flags().IntVar(&wait, "wait", 0, "Wait time in seconds between commands")
-	rootCmd.Flags().BoolVar(&termMode, "terminal", false, "Enable terminal mode for interactive commands")
-
-	// Bind environment variables
-	cobra.MarkFlagRequired(rootCmd.Flags(), "password")
-}
+var rootCmd = newRootCmd()
 
 func Execute() {
-	// Execute the root command
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
