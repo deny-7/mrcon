@@ -12,22 +12,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token:  ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ github.token }}
       - name: Run tests
         run: |
           go mod tidy
           go test -v ./...
-      - name: Create and push semver tag
+      - name: Get semver tag
         id: semver
         uses: ietf-tools/semver-action@v1
         with:
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ github.token }}
           noNewCommitBehavior: warn
           noVersionBumpBehavior: warn
       - name: Create Release
-        uses: ncipollo/release-action@v1.12.0
+        uses: comnoco/create-release-action@v2.0.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         with:
-          allowUpdates: true
-          makeLatest: true
-          name: ${{ steps.semver.outputs.next }}
-          token: ${{ secrets.ACCESS_TOKEN }}
+          tag_name: ${{ steps.semver.outputs.next }}
+          release_name: ${{ steps.semver.outputs.next }}
+          prerelease: true
