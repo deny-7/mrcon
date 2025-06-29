@@ -32,15 +32,15 @@ func newRootCmd() *cobra.Command {
 		Short: "Minecraft RCON client",
 		Long:  `mrcon is a simple Minecraft RCON client written in Go.`,
 	}
-	cmd.Flags().StringVar(&host, "host", "H", "RCON server host (required)")
+	cmd.Flags().StringVarP(&host, "host", "H", "", "RCON server host (required)")
 	cmd.Flags().IntVarP(&port, "port", "p", 0, "RCON server port (required)")
-	cmd.Flags().StringVar(&password, "P", "", "RCON password (required)")
-	cmd.Flags().BoolVar(&showVer, "version", false, "Show version information")
-	cmd.Flags().BoolVar(&raw, "raw", false, "Output raw response without formatting")
-	cmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
-	cmd.Flags().BoolVar(&silent, "silent", false, "Suppress command output")
-	cmd.Flags().IntVar(&wait, "wait", 0, "Wait time in seconds between commands")
-	cmd.Flags().BoolVar(&termMode, "terminal", false, "Enable terminal mode for interactive commands")
+	cmd.Flags().StringVarP(&password, "password", "P", "", "RCON password (required)")
+	cmd.Flags().BoolVarP(&showVer, "version", "v", false, "Show version information")
+	cmd.Flags().BoolVarP(&raw, "raw", "r", false, "Output raw response without formatting")
+	cmd.Flags().BoolVarP(&noColor, "no-color", "n", false, "Disable colored output")
+	cmd.Flags().BoolVarP(&silent, "silent", "s", false, "Suppress command output")
+	cmd.Flags().IntVarP(&wait, "wait", "w", 0, "Wait time in seconds between commands")
+	cmd.Flags().BoolVarP(&termMode, "terminal", "t", false, "Enable terminal mode for interactive commands")
 	cmd.RunE = runRootCmd
 	return cmd
 }
