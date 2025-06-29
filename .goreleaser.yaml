@@ -1,0 +1,20 @@
+# GoReleaser config for mrcon
+project_name: mrcon
+builds:
+- main: ./main.go
+  goos:
+  - windows
+  - linux
+  - darwin
+  goarch:
+  - amd64
+  - arm64
+  ldflags: -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  github:
+    owner: deny-7
+    name: mrcon
